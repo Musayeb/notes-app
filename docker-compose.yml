@@ -1,0 +1,40 @@
+# Local development: `docker compose up`.
+# Values come from .env (see .env.example); the defaults below are for local use only.
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${PGUSER:-notes}
+      POSTGRES_PASSWORD: ${PGPASSWORD:-notes-dev-password}
+      POSTGRES_DB: ${PGDATABASE:-notes}
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      target: dev
+    environment:
+      PORT: 3000
+      PGHOST: db
+      PGPORT: 5432
+      PGUSER: ${PGUSER:-notes}
+      PGPASSWORD: ${PGPASSWORD:-notes-dev-password}
+      PGDATABASE: ${PGDATABASE:-notes}
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    volumes:
+      - ./src:/app/src
+      - ./public:/app/public
+      - ./test:/app/test
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db-data:
